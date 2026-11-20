@@ -4,35 +4,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASATT Calculator</title>
+<title>ASATT - Calculator & Games</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   background: #080817;
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   color: white;
   padding: 15px;
 }
 
+header {
+  text-align: center;
+  color: #00eaff;
+}
+
+header h1 { margin-bottom: 5px; }
+
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+
+nav button, .homeBtn {
+  background: #006b91;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.page {
+  display: none;
+  max-width: 380px;
+  margin: auto;
+}
+
+.page.active { display: block; }
+
 .calculator {
   width: 100%;
-  max-width: 340px;
   padding: 20px;
   border-radius: 22px;
   background: #17172b;
   box-shadow: 0 0 25px #00eaff;
 }
 
-h1 {
+h2 {
   text-align: center;
   color: #00eaff;
 }
@@ -56,7 +83,7 @@ h1 {
   gap: 10px;
 }
 
-button {
+.buttons button {
   padding: 17px 5px;
   border: none;
   border-radius: 12px;
@@ -66,29 +93,77 @@ button {
   font-weight: bold;
 }
 
-button:active {
-  transform: scale(0.9);
+.buttons button:active, nav button:active {
+  transform: scale(.94);
 }
 
-.operator {
-  background: #006b91;
-}
-
-.clear {
-  background: #e53935;
-}
-
+.operator { background: #006b91 !important; }
+.clear { background: #e53935 !important; }
 .equal {
-  background: #00c853;
+  background: #00c853 !important;
   grid-column: span 2;
 }
+
+/* FLAPPY BIRD */
+
+.gameBox {
+  background: #17172b;
+  padding: 15px;
+  border-radius: 20px;
+  box-shadow: 0 0 20px #00eaff;
+  text-align: center;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: auto;
+  border: 3px solid #00eaff;
+  border-radius: 12px;
+  background: #70d8ff;
+  touch-action: manipulation;
+}
+
+#score {
+  color: #00ffcc;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.gameBtn {
+  background: #00c853;
+  color: white;
+  padding: 13px 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+.homeBtn { margin-top: 15px; }
 </style>
 </head>
 
 <body>
 
-<div class="calculator">
+<header>
   <h1>🔥 ASATT</h1>
+  <p>Calculator & Games</p>
+</header>
+
+<nav>
+  <button onclick="showPage('calculatorPage')">🧮 Calculator</button>
+  <button onclick="showPage('gamePage')">🐤 Flappy Bird</button>
+</nav>
+
+<!-- CALCULATOR -->
+<section id="calculatorPage" class="page active">
+
+<div class="calculator">
+  <h2>🔥 ASATT Calculator</h2>
   <input id="display" value="0" readonly>
 
   <div class="buttons">
@@ -117,7 +192,41 @@ button:active {
   </div>
 </div>
 
+</section>
+
+<!-- FLAPPY BIRD -->
+<section id="gamePage" class="page">
+
+<div class="gameBox">
+  <h2>🐤 Flappy Bird</h2>
+  <p id="score">Score: 0</p>
+
+  <canvas id="game" width="320" height="480"></canvas>
+
+  <button class="gameBtn" id="startBtn" onclick="startGame()">
+    ▶ Start Game
+  </button>
+
+  <p>Tap the screen to fly!</p>
+</div>
+
+</section>
+
 <script>
+/* PAGE SWITCH */
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p =>
+    p.classList.remove("active")
+  );
+
+  document.getElementById(id).classList.add("active");
+
+  if (id !== "gamePage") {
+    stopGame();
+  }
+}
+
+/* CALCULATOR */
 let display = document.getElementById("display");
 let first = null;
 let operator = null;
@@ -156,6 +265,7 @@ function calculate() {
   if (operator === "+") answer = first + second;
   if (operator === "-") answer = first - second;
   if (operator === "*") answer = first * second;
+
   if (operator === "/") {
     if (second === 0) {
       display.value = "Error";
@@ -167,10 +277,7 @@ function calculate() {
     answer = first / second;
   }
 
-  display.value = String(
-    Number(answer.toFixed(8))
-  );
-
+  display.value = String(Number(answer.toFixed(8)));
   first = null;
   operator = null;
   fresh = true;
@@ -187,6 +294,149 @@ function backspace() {
   if (fresh) return;
   display.value = display.value.slice(0, -1) || "0";
 }
+
+/* FLAPPY BIRD GAME */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let bird, pipes, score, frame, running;
+let animationId = null;
+
+function resetGame() {
+  bird = { x: 65, y: 200, velocity: 0 };
+  pipes = [];
+  score = 0;
+  frame = 0;
+  running = false;
+  document.getElementById("score").textContent = "Score: 0";
+}
+
+function drawBird() {
+  ctx.font = "30px Arial";
+  ctx.fillText("🐤", bird.x - 15, bird.y + 10);
+}
+
+function drawPipes() {
+  pipes.forEach(p => {
+    ctx.fillStyle = "#00a83b";
+    ctx.fillRect(p.x, 0, 48, p.top);
+    ctx.fillRect(p.x, p.top + 125, 48, 480);
+
+    ctx.fillStyle = "#007d2b";
+    ctx.fillRect(p.x - 4, p.top - 15, 56, 15);
+    ctx.fillRect(p.x - 4, p.top + 125, 56, 15);
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 320, 480);
+
+  ctx.fillStyle = "#70d8ff";
+  ctx.fillRect(0, 0, 320, 480);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "25px Arial";
+  ctx.fillText("☁", 40, 70);
+  ctx.fillText("☁", 240, 130);
+
+  drawPipes();
+  drawBird();
+
+  ctx.fillStyle = "#c58b40";
+  ctx.fillRect(0, 455, 320, 25);
+}
+
+function gameOver() {
+  running = false;
+  document.getElementById("startBtn").textContent = "🔄 Restart Game";
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, 0, 320, 480);
+
+  ctx.fillStyle = "white";
+  ctx.textAlign = "center";
+  ctx.font = "30px Arial";
+  ctx.fillText("GAME OVER", 160, 215);
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 160, 250);
+  ctx.textAlign = "left";
+}
+
+function update() {
+  if (!running) return;
+
+  frame++;
+  bird.velocity += 0.38;
+  bird.y += bird.velocity;
+
+  if (frame % 95 === 0) {
+    let top = 65 + Math.random() * 180;
+    pipes.push({ x: 320, top: top, passed: false });
+  }
+
+  pipes.forEach(p => {
+    p.x -= 2.5;
+
+    if (!p.passed && p.x + 48 < bird.x) {
+      p.passed = true;
+      score++;
+      document.getElementById("score").textContent =
+        "Score: " + score;
+    }
+
+    let birdLeft = bird.x - 12;
+    let birdRight = bird.x + 12;
+    let birdTop = bird.y - 12;
+    let birdBottom = bird.y + 12;
+
+    if (
+      birdRight > p.x &&
+      birdLeft < p.x + 48 &&
+      (birdTop < p.top || birdBottom > p.top + 125)
+    ) {
+      gameOver();
+    }
+  });
+
+  pipes = pipes.filter(p => p.x > -60);
+
+  if (bird.y > 443 || bird.y < 0) {
+    gameOver();
+  }
+
+  draw();
+
+  if (running) {
+    animationId = requestAnimationFrame(update);
+  }
+}
+
+function startGame() {
+  if (running) return;
+
+  cancelAnimationFrame(animationId);
+  resetGame();
+  running = true;
+
+  document.getElementById("startBtn").textContent = "Playing...";
+  draw();
+  update();
+}
+
+function flap() {
+  if (!running) return;
+  bird.velocity = -6.5;
+}
+
+function stopGame() {
+  running = false;
+  cancelAnimationFrame(animationId);
+}
+
+canvas.addEventListener("pointerdown", flap);
+
+resetGame();
+draw();
+
 </script>
 
 </body>
